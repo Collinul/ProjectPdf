@@ -72,8 +72,8 @@ for i in range(len(f)):
         "Perioada Internarii": metadata[3],
         "Urgenta": metadata[4]
     }
-    df = pd.DataFrame(data)
+df = pd.DataFrame(data)
 
-    with pd.ExcelWriter("excel/output.xlsx") as writer:
-        df.to_excel(writer, sheet_name="Output", index=False)
-    st.write(df)
+with pd.ExcelWriter("excel/output.xlsx") as writer:
+    df.to_excel(writer, sheet_name="Output", index=False)
+st.write(df)
