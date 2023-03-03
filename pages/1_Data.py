@@ -3,10 +3,20 @@ from PyPDF2 import PdfReader
 import pandas as pd
 import os
 import numpy as np
-
+import openpyxl
 # site config
 st.set_page_config(page_title="Extract", layout="wide",
                    page_icon=":sun_with_face:")
+hide_st_style = """
+<style>
+#MainMenu {visibility: hidden;}
+footer {visibility: hidden;}
+header {visibility: hidden;}
+</style>
+
+"""
+st.markdown(hide_st_style, unsafe_allow_html=True)
+
 st.header("Aici ma joc eu cu datele , nu baga in seama  ")
 st.title("Data")
 # File logic
