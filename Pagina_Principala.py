@@ -1,7 +1,8 @@
 import streamlit as st
 import pandas as pd
 import openpyxl
-st.set_page_config(page_title="HomePage", layout="wide",  page_icon=":sun_with_face:")
+st.set_page_config(page_title="HomePage", layout="wide",
+                   page_icon=":sun_with_face:")
 st.title("Pagina Principala :smile:")
 hide_st_style = """
 <style>
