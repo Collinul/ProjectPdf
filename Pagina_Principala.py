@@ -19,3 +19,5 @@ st.markdown(hide_st_style, unsafe_allow_html=True)
 table = pd.read_excel("excel/output.xlsx")
 st.subheader(f"Momentan doar asta avem in excel:\n")
 st.write(table)
+table = st.session_state["table"]
+st.write(table)

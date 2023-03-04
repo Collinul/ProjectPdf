@@ -4,7 +4,12 @@ import pandas as pd
 import os
 import numpy as np
 import openpyxl
-
+import re
+from difflib import SequenceMatcher
+from thefuzz import fuzz
+from thefuzz import process
+import time
+import collections.abc
 # site config
 st.set_page_config(page_title="Extract", layout="wide",
                    page_icon=":sun_with_face:")
@@ -29,6 +34,31 @@ directory = 'pdf'
 f = []
 
 
+
+@st.cache_data
+def fuzzy_search(search_key, text, strictness):
+    res=[]
+    words=[]
+    rezovle = False
+    _text = text.split()
+    myI= st.progress(0)
+    myJ=st.progress(0)
+   
+    for line in _text:   
+        similarity = fuzz.ratio(search_key, line)
+        if  similarity!=None and similarity >=strictness:
+            res.append(similarity)
+            words.append(text[i:j])
+
+            st.write(f"Found '{line}' to be matching your search_key: {search_key} with {similarity}% similarity") 
+
+            rezovle = True
+       
+       
+    st.write(rezovle)
+    return rezovle
+
+
 def findKey(keyword, text):
     res = []
     mystring = text
@@ -43,30 +73,57 @@ def findKey(keyword, text):
 
 def findField(key1, key2, text):
     temp1 = findKey(key1, text)
+    # st.write("temp1: ",temp1)
     temp2 = findKey(key2, temp1[1]+temp1[2])
     res = temp1[2].replace(temp2[2], '').replace(temp2[1], '')
     
     return res
 
 def updateMetadata(metadata,keys,text,i):
-    for j in range(len(keys)):
-        metadata[j][i] = findField(keys[j][0],keys[j][1],text)
+    
+    
+    stop  = len(keys)
+    for j in range(stop):
+        if len(keys[j][0])>1:
+            st.write(f"**********{j}*************")
+            st.write(f"findField[{keys[j][0]}][{keys[j][1]}]: {findField(keys[j][0],keys[j][1],text)}")
+            metadata[j][i] = findField(keys[j][0],keys[j][1],text)
+        else:
+            if keys[j]=="Zile":
+                regex = re.compile('([0-9]*) zile')
+                st.write("nr Zile: ",regex.findall(text)[0])
+                metadata[j][i] = regex.findall(text)[0]
+            if keys[j] == "LDL":
+                st.write("LDH : ",getLDH(text))
+                metadata[j][i] = getLDH(text)
+            if keys[j] =="Hip":
+                if fuzzy_search('hipertensiv', text, 90):
+                    metadata[j][i]= "Da"
+                else:
+                    if fuzzy_search('hipertensiune', text, 90):
+                        metadata[j][i]= "Da" 
+                    else:
+                        metadata[j][i] ="Nu"
+            if keys[j] == "perioada":
+                temp = findField("Perioada internarii: ","(",text)
+                a = len(temp)
+                metadata[j][i] = temp.replace(temp[a-7:],"",1)
         
-    metadata[len(keys)][i] = getLDH(text)
+   
 
 def getLDH(text):
     hdl=findField("Colesterol HDL :","mg",text)
     hdl = float(hdl)
     st.write(f"Aici e hdl:{float(hdl)}")
 
-    seric=findField("Colesterol seric total :","mg",text)
+    seric=findField("total :","mg",text)
     st.write(f"Aici e seric:{seric}")
     seric = float(seric)
     st.write(f"Aici e seric:{seric}")
 
     trigliceride=findField("Trigliceride :","mg",text)
     trigliceride = float(trigliceride)
-    # st.write(f"aici e trigliceride:{float(trigliceride)}")
+    st.write(f"aici e trigliceride:{float(trigliceride)}")
 
     ldl = seric - hdl - trigliceride/5
     st.write(f"LDL COLESTEROL: {ldl}")
@@ -78,25 +135,24 @@ for filename in os.listdir(directory):
     f.append(os.path.join(directory, filename))
 
 st.write(f)
-metadata = np.empty([50,50], dtype="<U200")
-
-keys=[["NUMELE ", "PRENUMELE"],["PRENUMELE ", "VIRSTA"],["VIRSTA ","CNP"],["Data tiparire: ", "Sectia"],["Perioada internarii: ","Medic:"],["Urgenta ", "NUMELE "]]
+metadata = np.empty([50,50], dtype="<U250")
+zile = []
+keys=[["NUMELE ", "PRENUMELE"],["PRENUMELE ", "VIRSTA"],["VIRSTA ","CNP"],["Data tiparire: ", "Sectia"],"perioada","Zile",["Urgenta ", "NUMELE "],"Hip","LDL"]
 for i in range(len(f)):
     pdfFile = open(f[i], "rb")
     viewer = PdfReader(pdfFile)
     text = ""
-    pag2 = viewer.pages[1].extract_text()
+    # pag2 = viewer.pages[2].extract_text()
     # pag2 = pag2.replace(" ","")
     # pag3 = viewer.pages[2].extract_text()
 
     # getLDH(pag2)
    
-    # st.write(findField("Clor seric","Colesterol",pag2))
+    
     for j in range (len(viewer.pages)):
        text+=viewer.pages[j].extract_text()
             
-
-
+    # st.write("da: ",findField("Colesterol seric total :","mg",pag2))
     st.subheader(f"\n\n{i}. INVESTIGATII {f[i]}:\n\n\n{text}\n\n\n\n Acum cautam chestiile pe care le vrem in excel")
 
     # Keep in mind the j coordonates would eventually corespond to different patients
@@ -114,14 +170,19 @@ for i in range(len(f)):
         "Varsta": metadata[2],
         "Data Tiparire": metadata[3],
         "Perioada Internarii": metadata[4],
-        "Urgenta": metadata[5],
-        "LDL COLESTEROL": metadata[6]
+        "Numar zile": metadata[5],
+        "Urgenta": metadata[6],
+        "Hipertensiune": metadata[7],
+        "LDL COLESTEROL": metadata[8]
     }
 
     st.success("Efectuat cu succes\n\n\n\n")
 
 st.write("Aici e tabelul transformat in excel:\n")
 df = pd.DataFrame(data)
+
+if 'table' not in st.session_state:
+    st.session_state['table'] = metadata
 
 with pd.ExcelWriter("excel/output.xlsx") as writer:
     df.to_excel(writer, sheet_name="Output", index=False)
