@@ -21,7 +21,7 @@ header {visibility: hidden;}
 </style>
 
 """
-
+final = st.container()
 st.markdown(hide_st_style, unsafe_allow_html=True)
 
 st.header("Aici ma joc eu cu datele , nu baga in seama  ")
@@ -41,8 +41,6 @@ def fuzzy_search(search_key, text, strictness):
     words=[]
     rezovle = False
     _text = text.split()
-    myI= st.progress(0)
-    myJ=st.progress(0)
    
     for line in _text:   
         similarity = fuzz.ratio(search_key, line)
@@ -85,7 +83,7 @@ def updateMetadata(metadata,keys,text,i):
     stop  = len(keys)
     for j in range(stop):
         if len(keys[j][0])>1:
-            st.write(f"**********{j}*************")
+            st.write(f"++++++++++++++++++++++++++{j}+++++++++++++++++++++++++++++++")
             st.write(f"findField[{keys[j][0]}][{keys[j][1]}]: {findField(keys[j][0],keys[j][1],text)}")
             metadata[j][i] = findField(keys[j][0],keys[j][1],text)
         else:
@@ -97,27 +95,51 @@ def updateMetadata(metadata,keys,text,i):
                 st.write("LDH : ",getLDH(text))
                 metadata[j][i] = getLDH(text)
             if keys[j] =="Hip":
-                if fuzzy_search('hipertensiv', text, 90):
-                    metadata[j][i]= "Da"
+                if fuzzy_search('hipertensiv', text, 95):
+                    metadata[j][i]= "DA"
                 else:
-                    if fuzzy_search('hipertensiune', text, 90):
-                        metadata[j][i]= "Da" 
+                    if fuzzy_search('hipertensiune', text, 80):
+                        metadata[j][i]= "DA" 
                     else:
-                        metadata[j][i] ="Nu"
+                        metadata[j][i] ="NU"
+            if keys[j]=="dislipidemic":
+                if fuzzy_search('dislipidemic', text, 95):
+                    metadata[j][i]= "DA"
+                else:
+                    if fuzzy_search('dislipidemic', text, 80):
+                        metadata[j][i]= "DA" 
+                    else:
+                        metadata[j][i] ="NU"
+            if keys[j]=="diabet":
+                if fuzzy_search('diabet', text, 95):
+                    metadata[j][i]= "DA"
+                else:
+                    if fuzzy_search('diabet', text, 80):
+                        metadata[j][i]= "DA" 
+                    else:
+                        metadata[j][i] ="NU"
+            if keys[j]=="infarct":
+                if fuzzy_search('infarct', text, 95):
+                    metadata[j][i]= "DA"
+                else:
+                    if fuzzy_search('infarct', text, 80):
+                        metadata[j][i]= "DA" 
+                    else:
+                        metadata[j][i] ="NU"
             if keys[j] == "perioada":
                 temp = findField("Perioada internarii: ","(",text)
                 a = len(temp)
-                metadata[j][i] = temp.replace(temp[a-7:],"",1)
+                metadata[j][i] = temp.replace(temp[a-7:],"",1).replace(temp[10:16],"",1)
+           
         
    
 
 def getLDH(text):
     hdl=findField("Colesterol HDL :","mg",text)
+    
+    st.write(f"Aici e hdl:{hdl}")
     hdl = float(hdl)
-    st.write(f"Aici e hdl:{float(hdl)}")
-
     seric=findField("total :","mg",text)
-    st.write(f"Aici e seric:{seric}")
     seric = float(seric)
     st.write(f"Aici e seric:{seric}")
 
@@ -137,7 +159,7 @@ for filename in os.listdir(directory):
 st.write(f)
 metadata = np.empty([50,50], dtype="<U250")
 zile = []
-keys=[["NUMELE ", "PRENUMELE"],["PRENUMELE ", "VIRSTA"],["VIRSTA ","CNP"],["Data tiparire: ", "Sectia"],"perioada","Zile",["Urgenta ", "NUMELE "],"Hip","LDL"]
+keys=[["NUMELE ", "PRENUMELE"],["PRENUMELE ", "VIRSTA"],["VIRSTA ","CNP"],["Data tiparire: ", "Sectia"],"perioada","Zile",["Urgenta ", "NUMELE "],"Hip","LDL","dislipidemic","diabet","infarct"]
 for i in range(len(f)):
     pdfFile = open(f[i], "rb")
     viewer = PdfReader(pdfFile)
@@ -153,27 +175,39 @@ for i in range(len(f)):
        text+=viewer.pages[j].extract_text()
             
     # st.write("da: ",findField("Colesterol seric total :","mg",pag2))
-    st.subheader(f"\n\n{i}. INVESTIGATII {f[i]}:\n\n\n{text}\n\n\n\n Acum cautam chestiile pe care le vrem in excel")
+    st.subheader(f"\n\n{i}. INVESTIGATII {f[i]}")
+    # st.text(f"{text}")
+    st.write("Acum cautam chestiile pe care le vrem in excel")
 
     # Keep in mind the j coordonates would eventually corespond to different patients
     #TODO function care automatizeaza
     updateMetadata(metadata,keys,text,i)
-    st.write(f"Metadata 6 !!! {metadata[6]}")
+    
     st.write(f"Le adaugam in tabel:\n\n")
     st.write(metadata)
     #varsta, , ldl, (colesterol hdl, colesterol seric total + trigliceride pentru formula ldh)
     #hipertensiune?, daca au antecedente infarct?, dislipidemic?diabet da sau nu si daca insulino necesitant sau antidiabetice orale sau igieno- dientetic
+    
+    # pentru ca findField returneaza dubios daca are un \n sau ceva , .strip() iti scoate doar stringul si sterge spatiile
+    for h in range(len(metadata[6])):
+        metadata[6][i] = metadata[6][i].strip()
+       
+        
     data = {
 
         "Nume": metadata[0],
         "Prenume": metadata[1],
         "Varsta": metadata[2],
         "Data Tiparire": metadata[3],
-        "Perioada Internarii": metadata[4],
+        "Perioada_Internarii": metadata[4],
         "Numar zile": metadata[5],
         "Urgenta": metadata[6],
         "Hipertensiune": metadata[7],
-        "LDL COLESTEROL": metadata[8]
+        "LDL COLESTEROL": metadata[8],
+        "Dislipidemic": metadata[9],
+        "Diabet": metadata[10],
+        "Antecedente infarct": metadata[11]
+        
     }
 
     st.success("Efectuat cu succes\n\n\n\n")
@@ -187,4 +221,6 @@ if 'table' not in st.session_state:
 with pd.ExcelWriter("excel/output.xlsx") as writer:
     df.to_excel(writer, sheet_name="Output", index=False)
 st.write(df)
+with final:
+    st.success("Efectuat cu Success")
 st.success("Vezi ca la toate tabelasele de mai sus poti sa ordonezi in functie de fiecare coloana.\n FYI pentru orice inseamna data(de tiparire sau internare etc) nu ordoneaza corect, daca o sa ai nevoie imi zici, dar altfel ai fisierul excel si faci direct acolo")
