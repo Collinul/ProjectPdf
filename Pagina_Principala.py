@@ -31,8 +31,13 @@ diabet = st.sidebar.multiselect(
     options = df["Diabet"].unique(),
     default = df["Diabet"].unique(),
 )
+insulina = st.sidebar.multiselect(
+    "Insulina:",
+    options = df["Insulina"].unique(),
+    default = df["Insulina"].unique(),
+)
 df_selection = df.query(
-    "Urgenta == @urgenta & Dislipidemic == @dislipidemic & Diabet == @diabet"
+    "Urgenta == @urgenta & Dislipidemic == @dislipidemic & Diabet == @diabet & Insulina == @insulina"
 )
 
 #-----------MainPage------

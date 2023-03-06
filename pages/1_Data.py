@@ -21,11 +21,12 @@ header {visibility: hidden;}
 </style>
 
 """
-final = st.container()
+
 st.markdown(hide_st_style, unsafe_allow_html=True)
 
-st.header("Aici ma joc eu cu datele , nu baga in seama  ")
+Head = st.header("Aici ma joc eu cu datele , nu baga in seama  ")
 st.title("Data")
+final = st.container()
 # File logic
 # TODO: make it so you can put any number of pdfs as input serve the data to dataframe logic
 
@@ -92,7 +93,7 @@ def updateMetadata(metadata,keys,text,i):
                 st.write("nr Zile: ",regex.findall(text)[0])
                 metadata[j][i] = regex.findall(text)[0]
             if keys[j] == "LDL":
-                st.write("LDH : ",getLDH(text))
+                st.write("LDL : ",getLDH(text))
                 metadata[j][i] = getLDH(text)
             if keys[j] =="Hip":
                 if fuzzy_search('hipertensiv', text, 95):
@@ -110,6 +111,7 @@ def updateMetadata(metadata,keys,text,i):
                         metadata[j][i]= "DA" 
                     else:
                         metadata[j][i] ="NU"
+           
             if keys[j]=="diabet":
                 if fuzzy_search('diabet', text, 95):
                     metadata[j][i]= "DA"
@@ -118,6 +120,17 @@ def updateMetadata(metadata,keys,text,i):
                         metadata[j][i]= "DA" 
                     else:
                         metadata[j][i] ="NU"
+            if keys[j]=="insulina":
+                if  metadata[j-1][i] =="DA":
+                    if fuzzy_search('insulina', text, 80):
+                        metadata[j][i]= "Tratat cu Insulina"
+                    else:
+                        if fuzzy_search('dietetic', text, 80):
+                            metadata[j][i]= "Tratat cu dieta" 
+                        else:
+                            metadata[j][i] ="Nu scrie"
+                else:
+                    metadata[j][i]="---"
             if keys[j]=="infarct":
                 if fuzzy_search('infarct', text, 95):
                     metadata[j][i]= "DA"
@@ -135,92 +148,105 @@ def updateMetadata(metadata,keys,text,i):
    
 
 def getLDH(text):
-    hdl=findField("Colesterol HDL :","mg",text)
-    
-    st.write(f"Aici e hdl:{hdl}")
-    hdl = float(hdl)
-    seric=findField("total :","mg",text)
-    seric = float(seric)
-    st.write(f"Aici e seric:{seric}")
+    try:
+        hdl=findField("Colesterol HDL :","mg",text)
+        
+        st.write(f"Aici e hdl:{hdl}")
+        hdl = float(hdl)
+        seric=findField("total :","mg",text)
+        seric = float(seric)
+        st.write(f"Aici e seric:{seric}")
 
-    trigliceride=findField("Trigliceride :","mg",text)
-    trigliceride = float(trigliceride)
-    st.write(f"aici e trigliceride:{float(trigliceride)}")
+        trigliceride=findField("Trigliceride :","mg",text)
+        trigliceride = float(trigliceride)
+        st.write(f"aici e trigliceride:{float(trigliceride)}")
 
-    ldl = seric - hdl - trigliceride/5
-    st.write(f"LDL COLESTEROL: {ldl}")
+        ldl = seric - hdl - trigliceride/5
+        st.write(f"LDL COLESTEROL: {ldl}")
+        return ldl
+    except:
+        return "---"
     
-    return ldl
+    
 
  
 for filename in os.listdir(directory):
     f.append(os.path.join(directory, filename))
 
-st.write(f)
+# st.write(f)
 metadata = np.empty([50,50], dtype="<U250")
 zile = []
-keys=[["NUMELE ", "PRENUMELE"],["PRENUMELE ", "VIRSTA"],["VIRSTA ","CNP"],["Data tiparire: ", "Sectia"],"perioada","Zile",["Urgenta ", "NUMELE "],"Hip","LDL","dislipidemic","diabet","infarct"]
-for i in range(len(f)):
-    pdfFile = open(f[i], "rb")
-    viewer = PdfReader(pdfFile)
-    text = ""
-    # pag2 = viewer.pages[2].extract_text()
-    # pag2 = pag2.replace(" ","")
-    # pag3 = viewer.pages[2].extract_text()
+keys=[["NUMELE ", "PRENUMELE"],["PRENUMELE ", "VIRSTA"],["VIRSTA ","CNP"],["Data tiparire: ", "Sectia"],"perioada","Zile",["Urgenta ", "NUMELE "],"Hip","LDL","dislipidemic","diabet","insulina","infarct"]
 
-    # getLDH(pag2)
-   
+progress = st.progress(0)
+try:
+    for i in range(len(f)):
+        
+        pdfFile = open(f[i], "rb")
+        viewer = PdfReader(pdfFile)
+        text = ""
+        # pag2 = viewer.pages[2].extract_text()
+        # pag2 = pag2.replace(" ","")
+        # pag3 = viewer.pages[2].extract_text()
+
+        # getLDH(pag2)
     
-    for j in range (len(viewer.pages)):
-       text+=viewer.pages[j].extract_text()
+        
+        for j in range (len(viewer.pages)):
+         text+=viewer.pages[j].extract_text()
+                
+        # st.write("da: ",findField("Colesterol seric total :","mg",pag2))
+        st.subheader(f"\n\n{i}. INVESTIGATII {f[i]}")
+        # st.text(f"{text}")
+        st.write("Acum cautam chestiile pe care le vrem in excel")
+
+        # Keep in mind the j coordonates would eventually corespond to different patients
+        #TODO function care automatizeaza
+        updateMetadata(metadata,keys,text,i)
+        
+        st.write(f"Le adaugam in tabel:\n\n")
+        st.write(metadata)
+        #varsta, , ldl, (colesterol hdl, colesterol seric total + trigliceride pentru formula ldh)
+        #hipertensiune?, daca au antecedente infarct?, dislipidemic?diabet da sau nu si daca insulino necesitant sau antidiabetice orale sau igieno- dientetic
+        
+        # pentru ca findField returneaza dubios daca are un \n sau ceva , .strip() iti scoate doar stringul si sterge spatiile
+        for h in range(len(metadata[6])):
+            metadata[6][i] = metadata[6][i].strip()
+        
             
-    # st.write("da: ",findField("Colesterol seric total :","mg",pag2))
-    st.subheader(f"\n\n{i}. INVESTIGATII {f[i]}")
-    # st.text(f"{text}")
-    st.write("Acum cautam chestiile pe care le vrem in excel")
+        data = {
 
-    # Keep in mind the j coordonates would eventually corespond to different patients
-    #TODO function care automatizeaza
-    updateMetadata(metadata,keys,text,i)
-    
-    st.write(f"Le adaugam in tabel:\n\n")
-    st.write(metadata)
-    #varsta, , ldl, (colesterol hdl, colesterol seric total + trigliceride pentru formula ldh)
-    #hipertensiune?, daca au antecedente infarct?, dislipidemic?diabet da sau nu si daca insulino necesitant sau antidiabetice orale sau igieno- dientetic
-    
-    # pentru ca findField returneaza dubios daca are un \n sau ceva , .strip() iti scoate doar stringul si sterge spatiile
-    for h in range(len(metadata[6])):
-        metadata[6][i] = metadata[6][i].strip()
-       
+            "Nume": metadata[0],
+            "Prenume": metadata[1],
+            "Varsta": metadata[2],
+            "Data Tiparire": metadata[3],
+            "Perioada_Internarii": metadata[4],
+            "Numar zile": metadata[5],
+            "Urgenta": metadata[6],
+            "Hipertensiune": metadata[7],
+            "LDL COLESTEROL": metadata[8],
+            "Dislipidemic": metadata[9],
+            "Diabet": metadata[10],
+            "Insulina": metadata[11],
+            "Antecedente infarct": metadata[12]
+            
+        }
+        progress.progress(i/len(f),"Progress")
+        st.success("Efectuat cu succes\n\n\n\n")
+
+    st.write("Aici e tabelul transformat in excel:\n")
+    df = pd.DataFrame(data)
+
+    if 'table' not in st.session_state:
+        st.session_state['table'] = metadata
+
+    with pd.ExcelWriter("excel/output.xlsx") as writer:
+        df.to_excel(writer, sheet_name="Output", index=False)
+    st.write(df)
+    with final:
         
-    data = {
-
-        "Nume": metadata[0],
-        "Prenume": metadata[1],
-        "Varsta": metadata[2],
-        "Data Tiparire": metadata[3],
-        "Perioada_Internarii": metadata[4],
-        "Numar zile": metadata[5],
-        "Urgenta": metadata[6],
-        "Hipertensiune": metadata[7],
-        "LDL COLESTEROL": metadata[8],
-        "Dislipidemic": metadata[9],
-        "Diabet": metadata[10],
-        "Antecedente infarct": metadata[11]
-        
-    }
-
-    st.success("Efectuat cu succes\n\n\n\n")
-
-st.write("Aici e tabelul transformat in excel:\n")
-df = pd.DataFrame(data)
-
-if 'table' not in st.session_state:
-    st.session_state['table'] = metadata
-
-with pd.ExcelWriter("excel/output.xlsx") as writer:
-    df.to_excel(writer, sheet_name="Output", index=False)
-st.write(df)
-with final:
-    st.success("Efectuat cu Success")
-st.success("Vezi ca la toate tabelasele de mai sus poti sa ordonezi in functie de fiecare coloana.\n FYI pentru orice inseamna data(de tiparire sau internare etc) nu ordoneaza corect, daca o sa ai nevoie imi zici, dar altfel ai fisierul excel si faci direct acolo")
+        st.success("Efectuat cu Success")
+    
+    st.success("Vezi ca la toate tabelasele de mai sus poti sa ordonezi in functie de fiecare coloana.\n FYI pentru orice inseamna data(de tiparire sau internare etc) nu ordoneaza corect, daca o sa ai nevoie imi zici, dar altfel ai fisierul excel si faci direct acolo")
+except:
+    Head.exception("eroare")
