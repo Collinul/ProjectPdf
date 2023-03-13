@@ -2,6 +2,11 @@ import streamlit as st
 import pandas as pd
 import openpyxl
 import plotly.express as px
+import fastparquet
+import time
+
+from io import BytesIO
+from pyxlsb import open_workbook as open_xlsb
 st.set_page_config(page_title="HomePage", layout="wide",
                    page_icon=":sun_with_face:")
 
@@ -13,9 +18,19 @@ header {visibility: hidden;}
 </style>
 
 """
-st.markdown(hide_st_style, unsafe_allow_html=True)
+def getVarsta(df):
+    temp_varsta = df["Varsta"].values.tolist()
+    varsta=[]
+    for i in range (len(temp_varsta)):
+        varsta.append(int(temp_varsta[i][:2]))
+    return varsta
 
-df = pd.read_excel("excel/output.xlsx")
+
+st.markdown(hide_st_style, unsafe_allow_html=True)
+   
+df = pd.read_feather("excel/output.feather")
+
+
 urgenta = st.sidebar.multiselect(
     "Urgenta:",
     options = df["Urgenta"].unique(),
@@ -36,13 +51,37 @@ insulina = st.sidebar.multiselect(
     options = df["Insulina"].unique(),
     default = df["Insulina"].unique(),
 )
+st.sidebar.markdown("---")
+h=[]
+
+
+
 df_selection = df.query(
     "Urgenta == @urgenta & Dislipidemic == @dislipidemic & Diabet == @diabet & Insulina == @insulina"
 )
+varsta = getVarsta(df_selection)
 
+age_min = st.sidebar.text_input(
+    "Limita inferioara a varstei:",
+    value= int(min(varsta))
+)
+age_max = st.sidebar.text_input(
+    "Limita superioara a varstei:",
+    value = int(max(varsta))
+)
+a_m = int(age_min)
+a_M = int(age_max)
+
+df_selection["Slider"] = varsta
+df_selection  = df_selection.query("Slider <= @a_M & Slider >= @a_m")
+
+# if 'index' in df_selection.columns:
+#     df_selection.drop('index', axis =1)
 #-----------MainPage------
 st.title(":bar_chart: Pagina Principala")
 st.markdown("##")
+st.markdown("---")
+
 
 # top kpi's
 procent_diabetici = round(((df_selection["Diabet"]=="DA").sum()*100)/len(df_selection["Diabet"]),2)
@@ -70,9 +109,25 @@ with column5:
     st.subheader(f"{medie_internat} Zile")
 
 st.markdown("---")
-
+df_selection = df_selection.drop("Slider",axis=1 ).reset_index().set_index("index")
 st.table(df_selection)
+def to_excel(df):
+    output = BytesIO()
+    writer = pd.ExcelWriter(output)
+    df.to_excel(writer, index=False, sheet_name='Sheet1')
+    workbook = writer.book
+    worksheet = writer.sheets['Sheet1']
+    # format1 = workbook.add_format({'num_format': '0.00'}) 
+    # worksheet.set_column('A:A', None, format1)  
+    writer.save()
+    processed_data = output.getvalue()
+    return processed_data
+df_xslx = to_excel(df_selection)
+def downloadTable():
+    with pd.ExcelWriter("excel/filteredTable.xlsx") as writer:
+            df_selection.to_excel(writer, sheet_name="Output", index=False, data= "excel/filteredTable.xlsx")
 
+st.download_button(label = "Download Table",file_name="Pacienti.xlsx", data=df_xslx)
 st.markdown("---")
 data_Hipertensiune = (df_selection["Hipertensiune"]=="DA").sum()
 data_Diabet = (df_selection["Diabet"]=="DA").sum()

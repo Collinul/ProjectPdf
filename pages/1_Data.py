@@ -37,9 +37,9 @@ f = []
 
 
 @st.cache_data
-def fuzzy_search(search_key, text, strictness):
+def fuzzy_search(search_key, text, strictness,show):
     res=[]
-    words=[]
+    
     rezovle = False
     _text = text.split()
    
@@ -47,14 +47,14 @@ def fuzzy_search(search_key, text, strictness):
         similarity = fuzz.ratio(search_key, line)
         if  similarity!=None and similarity >=strictness:
             res.append(similarity)
-            words.append(text[i:j])
-
-            st.write(f"Found '{line}' to be matching your search_key: {search_key} with {similarity}% similarity") 
+            
+            if show ==1:
+                st.write(f"Found '{line}' to be matching your search_key: {search_key} with {similarity}% similarity") 
 
             rezovle = True
        
-       
-    st.write(rezovle)
+    if show ==1:  
+        st.write(rezovle)
     return rezovle
 
 
@@ -72,70 +72,72 @@ def findKey(keyword, text):
 
 def findField(key1, key2, text):
     temp1 = findKey(key1, text)
-    # st.write("temp1: ",temp1)
     temp2 = findKey(key2, temp1[1]+temp1[2])
     res = temp1[2].replace(temp2[2], '').replace(temp2[1], '')
     
     return res
 
-def updateMetadata(metadata,keys,text,i):
+def updateMetadata(metadata,keys,text,i,show):
     
     
     stop  = len(keys)
     for j in range(stop):
         if len(keys[j][0])>1:
-            st.write(f"++++++++++++++++++++++++++{j}+++++++++++++++++++++++++++++++")
-            st.write(f"findField[{keys[j][0]}][{keys[j][1]}]: {findField(keys[j][0],keys[j][1],text)}")
+            if show ==1:
+                st.write(f"++++++++++++++++++++++++++{j}+++++++++++++++++++++++++++++++")
+                st.write(f"findField[{keys[j][0]}][{keys[j][1]}]: {findField(keys[j][0],keys[j][1],text)}")
             metadata[j][i] = findField(keys[j][0],keys[j][1],text)
         else:
             if keys[j]=="Zile":
                 regex = re.compile('([0-9]*) zile')
-                st.write("nr Zile: ",regex.findall(text)[0])
+                if show ==1:
+                    st.write("nr Zile: ",regex.findall(text)[0])
                 metadata[j][i] = regex.findall(text)[0]
             if keys[j] == "LDL":
-                st.write("LDL : ",getLDH(text))
-                metadata[j][i] = getLDH(text)
+                if show ==1:
+                    st.write("LDL : ",getLDH(text,show))
+                metadata[j][i] = getLDH(text,show)
             if keys[j] =="Hip":
-                if fuzzy_search('hipertensiv', text, 95):
+                if fuzzy_search('hipertensiv', text, 95,show):
                     metadata[j][i]= "DA"
                 else:
-                    if fuzzy_search('hipertensiune', text, 80):
+                    if fuzzy_search('hipertensiune', text, 80,show):
                         metadata[j][i]= "DA" 
                     else:
                         metadata[j][i] ="NU"
             if keys[j]=="dislipidemic":
-                if fuzzy_search('dislipidemic', text, 95):
+                if fuzzy_search('dislipidemic', text, 95,show):
                     metadata[j][i]= "DA"
                 else:
-                    if fuzzy_search('dislipidemic', text, 80):
+                    if fuzzy_search('dislipidemic', text, 80,show):
                         metadata[j][i]= "DA" 
                     else:
                         metadata[j][i] ="NU"
            
             if keys[j]=="diabet":
-                if fuzzy_search('diabet', text, 95):
+                if fuzzy_search('diabet', text, 95,show):
                     metadata[j][i]= "DA"
                 else:
-                    if fuzzy_search('diabet', text, 80):
+                    if fuzzy_search('diabet', text, 80,show):
                         metadata[j][i]= "DA" 
                     else:
                         metadata[j][i] ="NU"
             if keys[j]=="insulina":
                 if  metadata[j-1][i] =="DA":
-                    if fuzzy_search('insulina', text, 80):
+                    if fuzzy_search('insulina', text, 80,show):
                         metadata[j][i]= "Tratat cu Insulina"
                     else:
-                        if fuzzy_search('dietetic', text, 80):
+                        if fuzzy_search('dietetic', text, 80,show):
                             metadata[j][i]= "Tratat cu dieta" 
                         else:
                             metadata[j][i] ="Nu scrie"
                 else:
                     metadata[j][i]="---"
             if keys[j]=="infarct":
-                if fuzzy_search('infarct', text, 95):
+                if fuzzy_search('infarct', text, 95,show):
                     metadata[j][i]= "DA"
                 else:
-                    if fuzzy_search('infarct', text, 80):
+                    if fuzzy_search('infarct', text, 80,show):
                         metadata[j][i]= "DA" 
                     else:
                         metadata[j][i] ="NU"
@@ -147,106 +149,126 @@ def updateMetadata(metadata,keys,text,i):
         
    
 
-def getLDH(text):
+def getLDH(text,show):
     try:
         hdl=findField("Colesterol HDL :","mg",text)
-        
-        st.write(f"Aici e hdl:{hdl}")
+        if show ==1:
+            st.write(f"Aici e hdl:{hdl}")
         hdl = float(hdl)
         seric=findField("total :","mg",text)
         seric = float(seric)
-        st.write(f"Aici e seric:{seric}")
+        if show ==1:
+            st.write(f"Aici e seric:{seric}")
 
         trigliceride=findField("Trigliceride :","mg",text)
         trigliceride = float(trigliceride)
-        st.write(f"aici e trigliceride:{float(trigliceride)}")
+        if show ==1:
+            st.write(f"aici e trigliceride:{float(trigliceride)}")
 
         ldl = seric - hdl - trigliceride/5
-        st.write(f"LDL COLESTEROL: {ldl}")
-        return ldl
+        if show ==1:    
+            st.write(f"LDL COLESTEROL: {ldl}")
+        return round(ldl,2)
     except:
         return "---"
     
-    
+@st.cache_data    
+def executeProject(show):
+    varsta=[]
+    for filename in os.listdir(directory):
+        f.append(os.path.join(directory, filename))
 
- 
-for filename in os.listdir(directory):
-    f.append(os.path.join(directory, filename))
+    # st.write(f)
+    metadata = np.empty([len(f),len(f)], dtype="<U250")
+    zile = []
+    keys=[["NUMELE ", "PRENUMELE"],["PRENUMELE ", "VIRSTA"],["VIRSTA ","CNP"],["Data tiparire: ", "Sectia"],"perioada","Zile",["Urgenta ", "NUMELE "],"Hip","LDL","dislipidemic","diabet","insulina","infarct"]
 
-# st.write(f)
-metadata = np.empty([50,50], dtype="<U250")
-zile = []
-keys=[["NUMELE ", "PRENUMELE"],["PRENUMELE ", "VIRSTA"],["VIRSTA ","CNP"],["Data tiparire: ", "Sectia"],"perioada","Zile",["Urgenta ", "NUMELE "],"Hip","LDL","dislipidemic","diabet","insulina","infarct"]
-
-progress = st.progress(0)
-try:
+    progress = st.progress(0)
+    # try:
     for i in range(len(f)):
+            
+            pdfFile = open(f[i], "rb")
+            viewer = PdfReader(pdfFile)
+            text = ""
+           
         
-        pdfFile = open(f[i], "rb")
-        viewer = PdfReader(pdfFile)
-        text = ""
-        # pag2 = viewer.pages[2].extract_text()
-        # pag2 = pag2.replace(" ","")
-        # pag3 = viewer.pages[2].extract_text()
+            
+            for j in range (len(viewer.pages)):
+                text+=viewer.pages[j].extract_text()
+         
+            updateMetadata(metadata,keys,text,i,show)
+            
+          
+           
+            #varsta, , ldl, (colesterol hdl, colesterol seric total + trigliceride pentru formula ldh)
+            #hipertensiune?, daca au antecedente infarct?, dislipidemic?diabet da sau nu si daca insulino necesitant sau antidiabetice orale sau igieno- dientetic
+            
+            # pentru ca findField returneaza dubios daca are un \n sau ceva , .strip() iti scoate doar stringul si sterge spatiile
+            for h in range(len(metadata[6])):
+                metadata[6][i] = metadata[6][i].strip()
+                if metadata[6][i] =="":
+                    metadata[6][i] = "NU"     
+            varsta.append(metadata[6][i][:1])
+            data = {
 
-        # getLDH(pag2)
-    
-        
-        for j in range (len(viewer.pages)):
-         text+=viewer.pages[j].extract_text()
+                "Nume": metadata[0],
+                "Prenume": metadata[1],
+                "Varsta": metadata[2],
+                "Data Tiparire": metadata[3],
+                "Perioada Internarii": metadata[4],
+                "Numar zile": metadata[5],
+                "Urgenta": metadata[6],
+                "Hipertensiune": metadata[7],
+                "LDL COLESTEROL": metadata[8],
+                "Dislipidemic": metadata[9],
+                "Diabet": metadata[10],
+                "Insulina": metadata[11],
+                "Antecedente infarct": metadata[12]
                 
-        # st.write("da: ",findField("Colesterol seric total :","mg",pag2))
-        st.subheader(f"\n\n{i}. INVESTIGATII {f[i]}")
-        # st.text(f"{text}")
-        st.write("Acum cautam chestiile pe care le vrem in excel")
+            }
+            progress.progress(i/len(f),"Progress")
 
-        # Keep in mind the j coordonates would eventually corespond to different patients
-        #TODO function care automatizeaza
-        updateMetadata(metadata,keys,text,i)
-        
-        st.write(f"Le adaugam in tabel:\n\n")
-        st.write(metadata)
-        #varsta, , ldl, (colesterol hdl, colesterol seric total + trigliceride pentru formula ldh)
-        #hipertensiune?, daca au antecedente infarct?, dislipidemic?diabet da sau nu si daca insulino necesitant sau antidiabetice orale sau igieno- dientetic
-        
-        # pentru ca findField returneaza dubios daca are un \n sau ceva , .strip() iti scoate doar stringul si sterge spatiile
-        for h in range(len(metadata[6])):
-            metadata[6][i] = metadata[6][i].strip()
-        
-            
-        data = {
-
-            "Nume": metadata[0],
-            "Prenume": metadata[1],
-            "Varsta": metadata[2],
-            "Data Tiparire": metadata[3],
-            "Perioada_Internarii": metadata[4],
-            "Numar zile": metadata[5],
-            "Urgenta": metadata[6],
-            "Hipertensiune": metadata[7],
-            "LDL COLESTEROL": metadata[8],
-            "Dislipidemic": metadata[9],
-            "Diabet": metadata[10],
-            "Insulina": metadata[11],
-            "Antecedente infarct": metadata[12]
-            
-        }
-        progress.progress(i/len(f),"Progress")
-        st.success("Efectuat cu succes\n\n\n\n")
-
-    st.write("Aici e tabelul transformat in excel:\n")
+            if show ==1:
+                         
+                st.subheader(f"\n\n{i}. INVESTIGATII {f[i]}")
+                st.write("Acum cautam chestiile pe care le vrem in excel")
+                st.write(f"Le adaugam in tabel:\n\n")
+                st.write(metadata)
+                st.success("Efectuat cu succes\n\n\n\n")
+               
     df = pd.DataFrame(data)
 
     if 'table' not in st.session_state:
-        st.session_state['table'] = metadata
-
-    with pd.ExcelWriter("excel/output.xlsx") as writer:
-        df.to_excel(writer, sheet_name="Output", index=False)
-    st.write(df)
-    with final:
+            st.session_state['table'] = metadata
+    if 'varsta' not in st.session_state:
+            st.session_state['varsta'] = varsta
+    df.to_feather("excel/output.feather")
+   
         
-        st.success("Efectuat cu Success")
-    
-    st.success("Vezi ca la toate tabelasele de mai sus poti sa ordonezi in functie de fiecare coloana.\n FYI pentru orice inseamna data(de tiparire sau internare etc) nu ordoneaza corect, daca o sa ai nevoie imi zici, dar altfel ai fisierul excel si faci direct acolo")
-except:
-    Head.exception("eroare")
+    with final:
+            
+            st.success("Efectuat cu Success")
+    progress.progress(100,"Progress")
+    st.write("Aici e tabelul transformat in excel:\n")
+    st.write(df)
+
+    if show ==1 :
+            st.success("Vezi ca la toate tabelasele de mai sus poti sa ordonezi in functie de fiecare coloana.\n FYI pentru orice inseamna data(de tiparire sau internare etc) nu ordoneaza corect, daca o sa ai nevoie imi zici, dar altfel ai fisierul excel si faci direct acolo")
+       
+    # except:
+    #     Head.exception("eroare")
+
+
+side = st.sidebar.selectbox(
+    "Optiuni: ",
+    options=["Nu afiseaza Consola","Afiseaza Consola"]
+  
+)
+
+
+if side =="Afiseaza Consola" :
+   executeProject(1)
+
+elif side == "Nu afiseaza Consola":
+    executeProject(0)
+    st.write("Consola nu e afisata")
