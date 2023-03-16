@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import openpyxl
 import plotly.express as px
+import fastparquet
 import time
 
 from io import BytesIO
@@ -87,8 +88,9 @@ procent_diabetici = round(((df_selection["Diabet"]=="DA").sum()*100)/len(df_sele
 procent_hipertensiv = round(((df_selection["Hipertensiune"]=="DA").sum()*100)/len(df_selection["Hipertensiune"]),2)
 procent_dislipidemic = round(((df_selection["Dislipidemic"]=="DA").sum()*100)/len(df_selection["Dislipidemic"]),2)
 procent_infarct =round(((df_selection["Antecedente infarct"]=="DA").sum()*100)/len(df_selection["Antecedente infarct"]),2)
+medie_internat = round(df_selection["Numar zile"].mean(),2)
 
-column1, column2, column3, column4 = st.columns(4)
+column1, column2, column3, column4, column5 = st.columns(5)
 
 with column1:
     st.subheader("Cati Diabetici din Total pacienti prezentati:")
@@ -102,7 +104,9 @@ with column3:
 with column4:
     st.subheader("Cati au Antecedente de Infarct din Total pacienti prezentati:")
     st.subheader(f"{procent_infarct}%")
-
+with column5:
+    st.subheader("Cat este un pacient internat in medie:")
+    st.subheader(f"{medie_internat} Zile")
 
 st.markdown("---")
 df_selection = df_selection.drop("Slider",axis=1 ).reset_index().set_index("index")
