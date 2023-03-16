@@ -18,7 +18,9 @@ header {visibility: hidden;}
 
 """
 def getVarsta(df):
+
     temp_varsta = df["Varsta"].values.tolist()
+    
     varsta=[]
     for i in range (len(temp_varsta)):
         varsta.append(int(temp_varsta[i][:2]))
@@ -28,7 +30,7 @@ def getVarsta(df):
 st.markdown(hide_st_style, unsafe_allow_html=True)
    
 df = pd.read_feather("excel/output.feather")
-
+st.dataframe(df)
 
 urgenta = st.sidebar.multiselect(
     "Urgenta:",

@@ -10,6 +10,7 @@ from thefuzz import fuzz
 from thefuzz import process
 import time
 import collections.abc
+
 # site config
 st.set_page_config(page_title="Extract", layout="wide",
                    page_icon=":sun_with_face:")
@@ -29,6 +30,8 @@ final = st.container()
 
 directory = 'pdf'
 f = []
+
+# TODO: Mare atentie, analizele au elemente duplicate si trebuie setat sa ia varianta cea mai actualizata a respectivului. sugerez 1 dictionar pentru un rand si functia migratedictionary ca sa isi faca append unde e cazul
 
 
 @st.cache_data
@@ -95,10 +98,10 @@ def updateMetadata(metadata, keys, text, i, show):
                 metadata[j][i] = regex.findall(text)[0]
             if keys[j] == "CNP":
                 ##
-                metadata[j][i] = findField("CNP ","CASA",text)
+                metadata[j][i] = findField("CNP ", "CASA", text)
                 st.write(f"CNP: {metadata[j][i]}")
 
-                cnp =  metadata[j][i]
+                cnp = metadata[j][i]
             if keys[j] == "Nastere":
                 ##
                 an = cnp[1]+cnp[2]
@@ -107,7 +110,7 @@ def updateMetadata(metadata, keys, text, i, show):
                 metadata[j][i] = zi + '/' + luna + '/' + an
             if keys[j] == "Sex":
                 ##
-                if int(cnp[0]) % 2 ==0:
+                if int(cnp[0]) % 2 == 0:
                     metadata[j][i] = "F"
                 else:
                     metadata[j][i] = "M"
@@ -189,17 +192,121 @@ def getLDH(text, show):
         return "---"
 
 
-@st.cache_data
+def extractInv(investigare, index, stop, data_fin):
+
+    key_val = []
+    # st.write(investigare)
+    caca = {}
+
+  # loop pentru gasit termeni si iti scoate key  si  valoare
+    for i in range(len(investigare)-1):
+        if len(investigare[i]) >= 1:
+            temp = findKey(':', investigare[i])
+
+            # st.write(words)
+            before = temp[0]
+            after = temp[2]
+            if '/' in before:
+                # st.write(f"DA ma intra aici ")
+                words = investigare[i].split(" ")
+                for word in words:
+
+                    if len(word) > 1 and word[0].isupper():
+                        key = word + '  /TODO'
+
+                        vere = findKey(key, investigare[i])
+                        before_value = findKey(":", vere[2])
+                        value = before_value[2]
+                        # st.write(key)
+                        break
+
+            else:
+                key = before
+                value = after
+
+            key_val.append((key, value))
+
+    st.write(f"key_val len:  {len(key_val)}")
+
+    # loop care baga key si valoarea in data
+    for i in range(len(key_val)):
+        cheie = key_val[i][0]
+        valoare = key_val[i][1]
+        # st.write(len(data[cheie]))
+
+    
+        caca[cheie] = valoare
+        
+        if cheie not in data_fin.keys():
+            data_fin[cheie] = []
+            
+        if len(data_fin[cheie]) < index:
+            for i in range(len(data_fin[cheie]),index):
+                if len(data_fin[cheie]) ==index:
+                    break
+                data_fin[cheie].append("gigi")
+            data_fin[cheie].append(caca[cheie])
+        elif len(data_fin[cheie]) > index:
+            for i in range(index, len(data_fin[cheie])):
+                data_fin[cheie].pop()
+            
+        else:
+            pass
+    st.write(len(data_fin.keys()))
+    # gigel = st.container()
+    # st.write(caca)       
+
+    # for name in caca.keys():
+    #     data_fin[name].append(caca[name])
+    
+    # st.write(data_fin)
+    # corecteaza lungimea arrayurilor
+    for name in data_fin.keys():
+        if len(data_fin[name])<stop :
+
+           while len(data_fin[name])!= stop:
+
+                    data_fin[name].append(i)
+
+        elif len(data_fin[name])==stop :
+            pass
+        elif len(data_fin[name])>stop  :
+            while len(data_fin[name])!= stop:
+                data_fin[name].pop()
+
+    # for name in caca.keys():
+    #     st.write(len(caca[name]))
+
+    # if index == stop-1:
+    #     # dc = pd.DataFrame(data_fin)
+    #     gigel.write(data_fin)
+    return data_fin
+
+
+def mergeDictionary(dict_1, dict_2):
+   
+    for key, value in dict_1.items():
+        if key in dict_1 and key in dict_2:
+            dict_1[key].append(dict_2[key])
+    return dict_1
+
+# @st.cache_data
+
+
 def executeProject(show):
     varsta = []
+    data_temp = {}
+    f = []
+    data_fin={}
     for filename in os.listdir(directory):
         f.append(os.path.join(directory, filename))
 
     # st.write(f)
     metadata = np.empty([len(f), len(f)], dtype="<U250")
+    extractData = np.empty([len(f), len(f)], dtype="<U250")
     zile = []
-    keys = [["NUMELE ", "PRENUMELE"], ["PRENUMELE ", "VIRSTA"], ["VIRSTA ", "CNP"],"CNP","Nastere", ["Data tiparire: ", "Sectia"],
-            "Sex","perioada", "Zile", ["Urgenta ", "NUMELE "], "Hip", "LDL", "dislipidemic", "diabet", "insulina", "infarct"]
+    keys = [["NUMELE ", "PRENUMELE"], ["PRENUMELE ", "VIRSTA"], ["VIRSTA ", "CNP"], "CNP", "Nastere", ["Data tiparire: ", "Sectia"],
+            "Sex", "perioada", "Zile", ["Urgenta ", "NUMELE "], "Hip", "LDL", "dislipidemic", "diabet", "insulina", "infarct"]
 
     progress = st.progress(0)
     # try:
@@ -210,15 +317,17 @@ def executeProject(show):
         text = ""
 
         if show == 1:
-            
+
             st.header(f"\n\n{i}. INVESTIGATII {f[i]}")
             st.subheader("Acum cautam chestiile pe care le vrem in excel")
 
         for j in range(len(viewer.pages)):
             text += viewer.pages[j].extract_text()
-        investigare = findField("INVESTIGATII PARACLINICE IN CURSUL INTERNARII","Indicatie de revenire pentru internare", text)
-        investigare = investigare.replace(";",",").split(',')
-        st.write(investigare)
+        investigare = findField("INVESTIGATII PARACLINICE IN CURSUL INTERNARII",
+                                "Indicatie de revenire pentru internare", text)
+        investigare = investigare.replace(";", ",").split(',')
+
+        # st.write(investigare)
         updateMetadata(metadata, keys, text, i, show)
 
         # varsta, , ldl, (colesterol hdl, colesterol seric total + trigliceride pentru formula ldh)
@@ -229,7 +338,7 @@ def executeProject(show):
             metadata[9][i] = metadata[9][i].strip()
             if metadata[9][i] == "":
                 metadata[9][i] = "NU"
-        varsta.append(metadata[6][i][:1])
+        varsta.append(metadata[2][i][:1])
         data = {
 
             "Nume": metadata[0],
@@ -252,13 +361,26 @@ def executeProject(show):
         }
         progress.progress(i/len(f), "Progress")
 
+        temp_data = extractInv(
+            investigare, i, len(f), data_temp)
+       
+        
+        data_temp = mergeDictionary(temp_data, data_temp)
+
         if show == 1:
             st.markdown("---")
             st.write(f"Le adaugam in tabel:\n\n")
             st.write(metadata)
             st.success("Efectuat cu succes\n\n\n\n")
             st.markdown("---")
+    # st.write(data_temp)
+    dc = pd.DataFrame(temp_data)
+    st.dataframe(dc)
+    for name in data.keys():
 
+        st.write(len(data[name]))
+    data = merge(data,temp_data)
+    
     df = pd.DataFrame(data)
 
     if 'table' not in st.session_state:
@@ -270,6 +392,8 @@ def executeProject(show):
     with final:
 
         st.success("Efectuat cu Success")
+        st.dataframe(dc)
+
     progress.progress(100, "Progress")
     st.markdown("---")
     st.write("Aici e tabelul transformat in excel:\n")
@@ -284,7 +408,7 @@ def executeProject(show):
 
 side = st.sidebar.selectbox(
     "Optiuni: ",
-    options=["Afiseaza Consola","Nu afiseaza Consola"]
+    options=["Nu afiseaza Consola", "Afiseaza Consola"]
 
 )
 
@@ -298,7 +422,9 @@ elif side == "Nu afiseaza Consola":
     st.write("Consola nu e afisata")
     st.markdown("---")
 
-### ideee algoritm gasit chestii din investigatii
+# ideee algoritm gasit chestii din investigatii
+
+
 '''
 keys = ["clor", "colesterol", "acid uric seric"]
 

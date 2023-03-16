@@ -10,6 +10,7 @@ from thefuzz import fuzz
 from thefuzz import process
 import time
 import collections.abc
+import json
 # site config
 st.set_page_config(page_title="Extract", layout="wide",
                    page_icon=":sun_with_face:")
@@ -258,11 +259,93 @@ def executeProject(show):
 
     # except:
     #     Head.exception("eroare")
+def extractInv(investigare, index, data, stop):
+    ##
+    result = []
+    key_val = []
+    # st.write(investigare)
+    for i in range(len(investigare)-1):
+        if len(investigare[i]) >= 1:
+            temp = findKey(':', investigare[i])
+
+            # st.write(words)
+            before = temp[0]
+            after = temp[2]
+            if '/' in before:
+                # st.write(f"DA ma intra aici ")
+                words = investigare[i].split(" ")
+                for word in words:
+
+                    if len(word) > 1 and word[0].isupper():
+                        key = word + '  /TODO'
+
+                        vere = findKey(key, investigare[i])
+                        before_value = findKey(":", vere[2])
+                        value = before_value[2]
+                        # st.write(key)
+                        result.append(key)
+                        break
+
+            else:
+                key = before
+                value = after
+
+                # st.write(before)
+                # regex = re.compile('[a-zA-Z]')
+                # key = regex.findall(before)
+                result.append(key)
+                # st.write(key)
+
+            key_val.append((key, value))
+    for i in range(len(key_val)):
+        cheie = key_val[i][0]
+        valoare = key_val[i][1]
+        # st.write(len(data[cheie]))
+
+        try:
+            
+            if len(data[cheie])-index < 1 and len(data[cheie]) != index:
+                    for i in range(index-len(data[cheie])-1):
+
+                        data[cheie].append("---")
+
+            else:
+                    data[cheie].append(valoare)
+            with open('try.txt', 'w') as f:
+                 f.write(json.dumps(data))
+           
+        except KeyError:
+            data[cheie] = []
+            data[cheie].append(valoare)
+           
+            with open('except.txt', 'w') as f:
+                 f.write(json.dumps(data))
+            
+    for name in data.keys():
+        if len(data[name])-stop < 0 :
+            for i in range(stop-len(data[name])):
+
+                data[name].append('---')
+        elif len(data[name])-stop == 0 :
+            pass
+        elif len(data[name])-stop > 0 :
+            # st.write("killme")
+            pass
+     
+    
+    # for name in data.keys():
+    #     st.write(len(data[name]))
+    
+    
+    return data
 
 
-@st.cache_data
+            
+
 def extractText(show):
     varsta = []
+    data={}
+    data_temp = {}
     for filename in os.listdir(directory):
         f.append(os.path.join(directory, filename))
 
@@ -271,6 +354,7 @@ def extractText(show):
     zile = []
     keys = [["NUMELE ", "PRENUMELE"], ["PRENUMELE ", "VIRSTA"], ["VIRSTA ", "CNP"], ["Data tiparire: ", "Sectia"],
             "perioada", "Zile", ["Urgenta ", "NUMELE "], "Hip", "LDL", "dislipidemic", "diabet", "insulina", "infarct"]
+    
 
     progress = st.progress(0)
     # try:
@@ -289,7 +373,15 @@ def extractText(show):
             text += viewer.pages[j].extract_text()
         investigare = findField("INVESTIGATII PARACLINICE IN CURSUL INTERNARII","Indicatie de revenire pentru internare", text)
         investigare = investigare.replace(";",",").split(',')
-        st.write(investigare)
+        # st.write(investigare)
+
+        
+        temp_data = extractInv(investigare, i, data_temp, len(f))
+        data_temp.update(temp_data)
+
+
+    df = pd.DataFrame(data)
+    st.dataframe(df)
 #----------------------------------------------------------------------------------------------------------------------------------
 side = st.sidebar.selectbox(
     "Optiuni: ",
