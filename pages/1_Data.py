@@ -10,6 +10,7 @@ from thefuzz import fuzz
 from thefuzz import process
 import time
 import collections.abc
+
 # site config
 st.set_page_config(page_title="Extract", layout="wide",
                    page_icon=":sun_with_face:")
@@ -33,7 +34,6 @@ final = st.container()
 
 directory = 'pdf'
 f = []
-
 
 
 @st.cache_data
@@ -93,6 +93,25 @@ def updateMetadata(metadata,keys,text,i,show):
                 if show ==1:
                     st.write("nr Zile: ",regex.findall(text)[0])
                 metadata[j][i] = regex.findall(text)[0]
+            if keys[j] == "CNP":
+                ##
+                metadata[j][i] = findField("CNP ","CASA",text)
+                st.write(f"CNP: {metadata[j][i]}")
+
+                cnp =  metadata[j][i]
+            if keys[j] == "Nastere":
+                ##
+                an = cnp[1]+cnp[2]
+                luna = cnp[3] + cnp[4]
+                zi = cnp[5] + cnp[6]
+                metadata[j][i] = zi + '/' + luna + '/' + an
+            if keys[j] == "Sex":
+                ##
+                if int(cnp[0]) % 2 ==0:
+                    metadata[j][i] = "F"
+                else:
+                    metadata[j][i] = "M"
+
             if keys[j] == "LDL":
                 if show ==1:
                     st.write("LDL : ",getLDH(text,show))
@@ -171,71 +190,78 @@ def getLDH(text,show):
         return round(ldl,2)
     except:
         return "---"
-    
-@st.cache_data    
+
+
+@st.cache_data
 def executeProject(show):
-    varsta=[]
+    varsta = []
     for filename in os.listdir(directory):
         f.append(os.path.join(directory, filename))
 
     # st.write(f)
-    metadata = np.empty([len(f),len(f)], dtype="<U250")
+    metadata = np.empty([len(f), len(f)], dtype="<U250")
     zile = []
-    keys=[["NUMELE ", "PRENUMELE"],["PRENUMELE ", "VIRSTA"],["VIRSTA ","CNP"],["Data tiparire: ", "Sectia"],"perioada","Zile",["Urgenta ", "NUMELE "],"Hip","LDL","dislipidemic","diabet","insulina","infarct"]
+    keys = [["NUMELE ", "PRENUMELE"], ["PRENUMELE ", "VIRSTA"], ["VIRSTA ", "CNP"],"CNP","Nastere", ["Data tiparire: ", "Sectia"],
+            "Sex","perioada", "Zile", ["Urgenta ", "NUMELE "], "Hip", "LDL", "dislipidemic", "diabet", "insulina", "infarct"]
 
     progress = st.progress(0)
     # try:
     for i in range(len(f)):
-            
-            pdfFile = open(f[i], "rb")
-            viewer = PdfReader(pdfFile)
-            text = ""
-           
-        
-            
-            for j in range (len(viewer.pages)):
-                text+=viewer.pages[j].extract_text()
-         
-            updateMetadata(metadata,keys,text,i,show)
-            
-          
-           
-            #varsta, , ldl, (colesterol hdl, colesterol seric total + trigliceride pentru formula ldh)
-            #hipertensiune?, daca au antecedente infarct?, dislipidemic?diabet da sau nu si daca insulino necesitant sau antidiabetice orale sau igieno- dientetic
-            
-            # pentru ca findField returneaza dubios daca are un \n sau ceva , .strip() iti scoate doar stringul si sterge spatiile
-            for h in range(len(metadata[6])):
-                metadata[6][i] = metadata[6][i].strip()
-                if metadata[6][i] =="":
-                    metadata[6][i] = "NU"     
-            varsta.append(metadata[6][i][:1])
-            data = {
 
-                "Nume": metadata[0],
-                "Prenume": metadata[1],
-                "Varsta": metadata[2],
-                "Data Tiparire": metadata[3],
-                "Perioada Internarii": metadata[4],
-                "Numar zile": metadata[5],
-                "Urgenta": metadata[6],
-                "Hipertensiune": metadata[7],
-                "LDL COLESTEROL": metadata[8],
-                "Dislipidemic": metadata[9],
-                "Diabet": metadata[10],
-                "Insulina": metadata[11],
-                "Antecedente infarct": metadata[12]
-                
-            }
-            progress.progress(i/len(f),"Progress")
+        pdfFile = open(f[i], "rb")
+        viewer = PdfReader(pdfFile)
+        text = ""
 
-            if show ==1:
-                         
-                st.subheader(f"\n\n{i}. INVESTIGATII {f[i]}")
-                st.write("Acum cautam chestiile pe care le vrem in excel")
-                st.write(f"Le adaugam in tabel:\n\n")
-                st.write(metadata)
-                st.success("Efectuat cu succes\n\n\n\n")
-               
+        if show == 1:
+            
+            st.header(f"\n\n{i}. INVESTIGATII {f[i]}")
+            st.subheader("Acum cautam chestiile pe care le vrem in excel")
+
+        for j in range(len(viewer.pages)):
+            text += viewer.pages[j].extract_text()
+        investigare = findField("INVESTIGATII PARACLINICE IN CURSUL INTERNARII","Indicatie de revenire pentru internare", text)
+        investigare = investigare.replace(";",",").split(',')
+        st.write(investigare)
+        updateMetadata(metadata, keys, text, i, show)
+
+        # varsta, , ldl, (colesterol hdl, colesterol seric total + trigliceride pentru formula ldh)
+        # hipertensiune?, daca au antecedente infarct?, dislipidemic?diabet da sau nu si daca insulino necesitant sau antidiabetice orale sau igieno- dientetic
+
+        # pentru ca findField returneaza dubios daca are un \n sau ceva , .strip() iti scoate doar stringul si sterge spatiile
+        for h in range(len(metadata[9])):
+            metadata[9][i] = metadata[9][i].strip()
+            if metadata[9][i] == "":
+                metadata[9][i] = "NU"
+        varsta.append(metadata[6][i][:1])
+        data = {
+
+            "Nume": metadata[0],
+            "Prenume": metadata[1],
+            "Varsta": metadata[2],
+            "CNP": metadata[3],
+            "Data Nastere": metadata[4],
+            "Data Tiparire": metadata[5],
+            "Sex": metadata[6],
+            "Perioada Internarii": metadata[7],
+            "Durata Internarii": metadata[8],
+            "Urgenta": metadata[9],
+            "Hipertensiune": metadata[10],
+            "LDL COLESTEROL": metadata[11],
+            "Dislipidemic": metadata[12],
+            "Diabet": metadata[13],
+            "Insulina": metadata[14],
+            "Antecedente infarct": metadata[15]
+
+        }
+        progress.progress(i/len(f), "Progress")
+
+        if show == 1:
+            st.markdown("---")
+            st.write(f"Le adaugam in tabel:\n\n")
+            st.write(metadata)
+            st.success("Efectuat cu succes\n\n\n\n")
+            st.markdown("---")
+
     df = pd.DataFrame(data)
 
     if 'table' not in st.session_state:
@@ -246,9 +272,10 @@ def executeProject(show):
    
         
     with final:
-            
-            st.success("Efectuat cu Success")
-    progress.progress(100,"Progress")
+
+        st.success("Efectuat cu Success")
+    progress.progress(100, "Progress")
+    st.markdown("---")
     st.write("Aici e tabelul transformat in excel:\n")
     st.write(df)
 
@@ -261,8 +288,8 @@ def executeProject(show):
 
 side = st.sidebar.selectbox(
     "Optiuni: ",
-    options=["Nu afiseaza Consola","Afiseaza Consola"]
-  
+    options=["Afiseaza Consola","Nu afiseaza Consola"]
+
 )
 
 
@@ -272,3 +299,35 @@ if side =="Afiseaza Consola" :
 elif side == "Nu afiseaza Consola":
     executeProject(0)
     st.write("Consola nu e afisata")
+    st.markdown("---")
+
+### ideee algoritm gasit chestii din investigatii
+'''
+keys = ["clor", "colesterol", "acid uric seric"]
+
+investigatii = "..."  textul cu investigatii
+
+investigatii.replace(";",",").split(",")
+
+investigatii == ["Sediment automat - Hematii:ABSENTE","Eritrocite (BLD):NEGATIV mg/dL",...]
+
+for i in range (len(keys)):
+
+    if keys[i] in investigatii: # dar facut cu fuzzy search pentru ca pot exista typo-uri
+        valoare = findField(":","unitati de masura") # aflam valoarea pentru keyul respectiv
+
+
+
+
+
+data:{
+            keys[i]: valoare
+
+        }        
+
+
+
+
+
+
+'''
