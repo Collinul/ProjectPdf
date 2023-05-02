@@ -30,7 +30,7 @@ def getVarsta(df):
 st.markdown(hide_st_style, unsafe_allow_html=True)
    
 df = pd.read_feather("excel/output.feather")
-st.dataframe(df)
+# st.dataframe(df)
 
 urgenta = st.sidebar.multiselect(
     "Urgenta:",
@@ -108,7 +108,9 @@ with column4:
 
 st.markdown("---")
 df_selection = df_selection.drop("Slider",axis=1 ).reset_index().set_index("index")
-st.table(df_selection)
+# st.table(df_selection)
+st.dataframe(df_selection)
+
 def to_excel(df):
     output = BytesIO()
     writer = pd.ExcelWriter(output)

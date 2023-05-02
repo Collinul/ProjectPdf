@@ -192,7 +192,159 @@ def getLDH(text, show):
         return "---"
 
 
-def extractInv(investigare, index, stop, data_fin):
+def unique(list1):
+
+    # initialize a null list
+    unique_list = []
+
+    # traverse for all elements
+    for x in list1:
+        # check if exists in unique_list or not
+        if x not in unique_list:
+            unique_list.append(x)
+
+    return unique_list
+
+    key_val = []
+    keys = []
+
+    # loop to find terms and extract key and value
+    for i in range(len(investigare) - 1):
+        if len(investigare[i]) >= 1:
+            temp = findKey(':', investigare[i])
+
+            before = temp[0]
+            after = temp[2]
+            if '/' in before:
+                words = investigare[i].split(" ")
+                for word in words:
+
+                    if len(word) > 1 and word[0].isupper():
+                        key = word + '  /TODO'
+
+                        vere = findKey(key, investigare[i])
+                        before_value = findKey(":", vere[2])
+                        value = before_value[2]
+                        break
+
+            else:
+                key = before.replace(' ', '')
+                value = after
+
+            key_val.append((key, value))
+            keys.append(key)
+
+    for i in range(len(keys)):
+        found_key = False
+        for j in range(len(metadataInv)):
+            if fuzzy_search(keys[i], metadataInv[j][0], 80, 0):
+                metadataInv[j][0] = keys[i]
+                found_key = True
+                break
+
+        if not found_key:
+            new_row = np.array([keys[i]] + ["" for _ in range(index)])
+            metadataInv = np.vstack((metadataInv, new_row))
+
+    for i in range(len(key_val)):
+        found_key = False
+        for j in range(len(metadataInv)):
+            if fuzzy_search(key_val[i][0], metadataInv[j][0], 80, 0):
+                metadataInv[j][index + 1] = key_val[i][1]
+                found_key = True
+                break
+
+        if not found_key:
+            new_row = np.array([key_val[i][0]] +
+                               ["" for _ in range(index)] + [key_val[i][1]])
+            metadataInv = np.vstack((metadataInv, new_row))
+
+    st.write(metadataInv)
+    if index == stop - 1:
+
+        st.write(metadataInv)
+
+
+def extractInv(investigare, index, stop, data_fin, metadataInv):
+    key_val = []
+    keys = []
+    # st.write(metadataInv)
+    # loop for finding terms and extracting keys and values
+    for i in range(len(investigare) - 1):
+        if len(investigare[i]) >= 1:
+            temp = findKey(':', investigare[i])
+            before = temp[0]
+            after = temp[2]
+
+            if '/' in before:
+                words = investigare[i].split(" ")
+                for word in words:
+                    if len(word) > 1 and word[0].isupper():
+                        key = word + '  /TODO'
+                        vere = findKey(key, investigare[i])
+                        before_value = findKey(":", vere[2])
+                        value = before_value[2]
+                        break
+            else:
+                key = before.replace(' ', '')
+                value = after
+
+            key_val.append((key, value))
+            keys.append(key)
+    # st.write(f"key len:  {len(keys)}")
+    for i in range(len(keys)):
+
+        aTemp = list(metadataInv[:, 0])
+        try:
+            place = aTemp.index(keys[i])
+        except ValueError:
+            closest_key = None
+            highest_similarity = 0
+
+            for existing_key in aTemp:
+                similarity = fuzz.ratio(keys[i], existing_key)
+                if similarity >= 80 and similarity > highest_similarity:
+                    highest_similarity = similarity
+                    closest_key = existing_key
+
+            row_added = False
+            if highest_similarity > 60:
+                keys[i] = closest_key
+            else:
+                for j in range(len(aTemp)):
+                    if metadataInv[j][0] == "":
+                        metadataInv[j][0] = keys[i]
+                        # st.write(f"keys[i]= {keys[i]}")
+                        row_added = True
+                        break
+
+                if not row_added:
+                    new_row = np.array(
+                        [keys[i]] + ["" for _ in range(metadataInv.shape[1] - 1)], dtype="<U250").reshape(1, -1)
+                    metadataInv = np.vstack((metadataInv, new_row))
+
+    for i in range(len(key_val)):
+        aTemp = list(metadataInv[:, 0])
+        try:
+            place = aTemp.index(key_val[i][0])
+            metadataInv[place][index + 1] = key_val[i][1]
+        except ValueError:
+            # for j in range(len(aTemp)):
+            #     if metadataInv[j][0] == "":
+            #         metadataInv[j][0] = key_val[i][0]
+            #         metadataInv[j][index + 1] = key_val[i][1]
+            #         st.write(key_val[i][0])
+            #         st.write(key_val[i][1])
+            #     j = len(aTemp)
+            pass
+
+    # st.write(metadataInv)
+    # if index == stop - 1:
+    #     st.write(metadataInv)
+    return metadataInv
+
+
+def extractInv_2(investigare, index, stop, data_fin):
 
     key_val = []
     # st.write(investigare)
@@ -234,44 +386,43 @@ def extractInv(investigare, index, stop, data_fin):
         valoare = key_val[i][1]
         # st.write(len(data[cheie]))
 
-    
         caca[cheie] = valoare
-        
+
         if cheie not in data_fin.keys():
             data_fin[cheie] = []
-            
+
         if len(data_fin[cheie]) < index:
-            for i in range(len(data_fin[cheie]),index):
-                if len(data_fin[cheie]) ==index:
+            for i in range(len(data_fin[cheie]), index):
+                if len(data_fin[cheie]) == index:
                     break
                 data_fin[cheie].append("gigi")
             data_fin[cheie].append(caca[cheie])
         elif len(data_fin[cheie]) > index:
             for i in range(index, len(data_fin[cheie])):
                 data_fin[cheie].pop()
-            
+
         else:
             pass
     st.write(len(data_fin.keys()))
     # gigel = st.container()
-    # st.write(caca)       
+    # st.write(caca)
 
     # for name in caca.keys():
     #     data_fin[name].append(caca[name])
-    
+
     # st.write(data_fin)
     # corecteaza lungimea arrayurilor
     for name in data_fin.keys():
-        if len(data_fin[name])<stop :
+        if len(data_fin[name]) < stop:
 
-           while len(data_fin[name])!= stop:
+            while len(data_fin[name]) != stop:
 
-                    data_fin[name].append(i)
+                data_fin[name].append(i)
 
-        elif len(data_fin[name])==stop :
+        elif len(data_fin[name]) == stop:
             pass
-        elif len(data_fin[name])>stop  :
-            while len(data_fin[name])!= stop:
+        elif len(data_fin[name]) > stop:
+            while len(data_fin[name]) != stop:
                 data_fin[name].pop()
 
     # for name in caca.keys():
@@ -284,7 +435,7 @@ def extractInv(investigare, index, stop, data_fin):
 
 
 def mergeDictionary(dict_1, dict_2):
-   
+
     for key, value in dict_1.items():
         if key in dict_1 and key in dict_2:
             dict_1[key].append(dict_2[key])
@@ -297,17 +448,19 @@ def executeProject(show):
     varsta = []
     data_temp = {}
     f = []
-    data_fin={}
+    data_fin = {}
     for filename in os.listdir(directory):
         f.append(os.path.join(directory, filename))
 
     # st.write(f)
     metadata = np.empty([len(f), len(f)], dtype="<U250")
+    metadataInv = np.zeros([len(f)+60, len(f)+1], dtype="<U250")
     extractData = np.empty([len(f), len(f)], dtype="<U250")
     zile = []
     keys = [["NUMELE ", "PRENUMELE"], ["PRENUMELE ", "VIRSTA"], ["VIRSTA ", "CNP"], "CNP", "Nastere", ["Data tiparire: ", "Sectia"],
             "Sex", "perioada", "Zile", ["Urgenta ", "NUMELE "], "Hip", "LDL", "dislipidemic", "diabet", "insulina", "infarct"]
 
+    keys_inv = []
     progress = st.progress(0)
     # try:
     for i in range(len(f)):
@@ -359,13 +512,10 @@ def executeProject(show):
             "Antecedente infarct": metadata[15]
 
         }
-        progress.progress(i/len(f), "Progress")
+        progress.progress(i/len(f), f"Progress {i}/{len(f)}")
 
         temp_data = extractInv(
-            investigare, i, len(f), data_temp)
-       
-        
-        data_temp = mergeDictionary(temp_data, data_temp)
+            investigare, i, len(f), data_temp, metadataInv)
 
         if show == 1:
             st.markdown("---")
@@ -375,24 +525,36 @@ def executeProject(show):
             st.markdown("---")
     # st.write(data_temp)
     dc = pd.DataFrame(temp_data)
-    st.dataframe(dc)
-    for name in data.keys():
 
-        st.write(len(data[name]))
-    data = merge(data,temp_data)
-    
+    dc_t = dc.transpose(copy=True)
+
+    dc_t.columns = dc_t.iloc[0]
+
+    dc_t = dc_t[1:]
+    dc_t = dc_t.reset_index(drop=True)
+    st.dataframe(dc_t)
+
+    # for name in data.keys():
+
+    #     st.write(len(data[name]))
+
     df = pd.DataFrame(data)
+    st.write(df)
+    df3 = pd.merge(df, dc_t, sort=False, left_index=True, right_index=True)
+    # df = df.merge(dc_t, how='outer', sort=False, left_index=True, right_index=True)
+    # df.join(dc_t)
+    st.write(df3)
 
     if 'table' not in st.session_state:
         st.session_state['table'] = metadata
     if 'varsta' not in st.session_state:
         st.session_state['varsta'] = varsta
-    df.to_feather("excel/output.feather")
+    df3.to_feather("excel/output.feather")
 
     with final:
 
         st.success("Efectuat cu Success")
-        st.dataframe(dc)
+        # st.dataframe(dc)
 
     progress.progress(100, "Progress")
     st.markdown("---")
